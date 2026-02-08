@@ -46,9 +46,13 @@ impl DtlsConnector {
                 ConnectorIdentity::Certificate(identity) => {
                     let identity = identity.as_ref();
 
-                    connector.set_certificate(&identity.cert)?;
-                    connector.set_private_key(&identity.pkey)?;
-                    if let Some(ref chain) = identity.chain {
+                    if let Some(ref cert) = identity.cert {
+                        connector.set_certificate(cert)?;
+                    }
+                    if let Some(ref pkey) = identity.pkey {
+                        connector.set_private_key(pkey)?;
+                    }
+                    if let Some(ref chain) = identity.ca {
                         for cert in chain.iter().rev() {
                             connector.add_extra_chain_cert(cert.to_owned())?;
                         }

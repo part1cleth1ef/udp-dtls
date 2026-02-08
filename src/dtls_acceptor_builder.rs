@@ -1,15 +1,17 @@
-use crate::{DtlsAcceptor, CertificateIdentity, Protocol, Result, SrtpProfile};
+use crate::{DtlsAcceptor, AcceptorIdentity, Protocol, Result, SrtpProfile};
 
 /// A builder for `DtlsAcceptor`s.
 /// With this builder you can configure the following DTLS properties:
-/// - The identity to be used for client certificate authentication
+/// - The identity to be used for authentication (certificate or PSK)
 /// - Adding and enabling the the DTLS extension 'use_srtp'
 /// - Configuring min/max supported DTLS versions
+/// - Adding custom cipher suites
 pub struct DtlsAcceptorBuilder {
-    pub(crate) identity: CertificateIdentity,
+    pub(crate) identity: AcceptorIdentity,
     pub(crate) srtp_profiles: Vec<SrtpProfile>,
     pub(crate) min_protocol: Option<Protocol>,
     pub(crate) max_protocol: Option<Protocol>,
+    pub(crate) cipher_list: Vec<String>,
 }
 
 impl DtlsAcceptorBuilder {
@@ -50,6 +52,14 @@ impl DtlsAcceptorBuilder {
     /// [`SSL_CTX_set_tlsext_use_srtp`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_CTX_set_tlsext_use_srtp.html
     pub fn add_srtp_profile(&mut self, profile: SrtpProfile) -> &mut DtlsAcceptorBuilder {
         self.srtp_profiles.push(profile);
+        self
+    }
+
+    /// Adds a cipher name to the list of allowed ciphers.
+    ///
+    /// This is required for PSK cipher suites (e.g. "PSK-AES128-CBC-SHA", "PSK-AES256-CBC-SHA").
+    pub fn add_cipher<C: Into<String>>(&mut self, cipher: C) -> &mut DtlsAcceptorBuilder {
+        self.cipher_list.push(cipher.into());
         self
     }
 

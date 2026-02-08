@@ -1,4 +1,3 @@
-use openssl::ssl::SslMethod;
 use std::{
     io::{Read, Write},
     net::UdpSocket,
@@ -6,12 +5,12 @@ use std::{
     time::Duration,
 };
 
-use udp_dtls::{Certificate, DtlsAcceptor, DtlsConnector, Identity, SrtpProfile};
-use udp_dtls::{DtlsAcceptorBuilder, UdpChannel};
+use udp_dtls::{Certificate, CertificateIdentity, DtlsAcceptor, DtlsConnector, SrtpProfile};
+use udp_dtls::UdpChannel;
 
 fn main() {
     let buffer = include_bytes!("../test/identity.p12");
-    let identity = Identity::from_pkcs12(buffer, "mypass").unwrap();
+    let identity = CertificateIdentity::from_pkcs12(buffer, "mypass").unwrap();
 
     let root_ca = include_bytes!("../test/root-ca.der");
     let root_ca = Certificate::from_der(root_ca).unwrap();
