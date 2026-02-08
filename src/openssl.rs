@@ -37,5 +37,18 @@ pub fn try_set_supported_protocols(
 
 pub fn init_trust() {
     static ONCE: Once = Once::new();
-    ONCE.call_once(|| openssl_probe::init_ssl_cert_env_vars());
+    ONCE.call_once(|| {
+        let result = openssl_probe::probe();
+        if let Some(path) = result.cert_file {
+            if std::env::var("SSL_CERT_FILE").is_err() {
+                std::env::set_var("SSL_CERT_FILE", &path);
+            }
+        }
+        if let Some(path) = result.cert_dir.first() {
+            // SSL_CERT_DIR env var takes a single directory path
+            if std::env::var("SSL_CERT_DIR").is_err() {
+                std::env::set_var("SSL_CERT_DIR", path);
+            }
+        }
+    });
 }

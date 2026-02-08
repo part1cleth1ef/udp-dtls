@@ -60,7 +60,7 @@ pub struct PskIdentity(pub(crate) Bytes, pub(crate) Bytes);
 
 impl PskIdentity {
     pub fn new(identity: &[u8], key: &[u8]) -> PskIdentity {
-        PskIdentity(Bytes::from(identity), Bytes::from(key))
+        PskIdentity(Bytes::copy_from_slice(identity), Bytes::copy_from_slice(key))
     }
 }
 

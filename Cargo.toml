@@ -12,10 +12,10 @@ exclude = ["target", "Cargo.lock"]
 readme = "README.md"
 
 [dependencies]
-openssl = "0.10.68"
-openssl-probe = "0.1.2"
-log = "0.4.6"
-bytes = "0.4.11"
+openssl = "0.10.75"
+openssl-probe = "0.2.1"
+log = "0.4.29"
+bytes = "1.11.1"
 
 [features]
 vendored = ["openssl/vendored"]
