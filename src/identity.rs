@@ -28,7 +28,10 @@ impl CertificateIdentity {
         Ok(CertificateIdentity(parsed))
     }
 
-    /// Returns the X509 certificate from this identity.
+    /// Returns the X509 certificate from this identity, if present.
+    ///
+    /// Note: Since `ParsedPkcs12_2` uses `Option<X509>`, this now returns `Option<Certificate>`.
+    /// PKCS12 identities used for DTLS will typically always contain a certificate.
     pub fn certificate(&self) -> Option<Certificate> {
         self.0.cert.as_ref().map(|c| Certificate::from(c.clone()))
     }
