@@ -1,7 +1,9 @@
 use crate::openssl::try_set_supported_protocols;
-use crate::{DtlsAcceptorBuilder, DtlsStream, HandshakeError, CertificateIdentity, Protocol, Result};
+use crate::{DtlsAcceptorBuilder, DtlsStream, HandshakeError, AcceptorIdentity, Protocol, Result};
+use log::debug;
+use openssl::error::ErrorStack;
 use openssl::ssl::{SslAcceptor, SslMethod};
-use std::{fmt, io, result};
+use std::{fmt, io, io::Write, result};
 
 /// Acceptor for incoming UDP sessions secured with DTLS.
 #[derive(Clone)]
@@ -10,8 +12,8 @@ pub struct DtlsAcceptor(SslAcceptor);
 impl DtlsAcceptor {
     /// Creates a `DtlsAcceptor` with default settings.
     ///
-    /// The identity acts as the server's private key/certificate chain.
-    pub fn default(identity: CertificateIdentity) -> Result<DtlsAcceptor> {
+    /// The identity acts as the server's authentication credential.
+    pub fn default<I: Into<AcceptorIdentity>>(identity: I) -> Result<DtlsAcceptor> {
         DtlsAcceptor::builder(identity).build()
     }
 
@@ -22,7 +24,8 @@ impl DtlsAcceptor {
     /// The following properties will be applied from the builder:
     /// - Sets minimal/maximal protocol version
     /// - Sets srtp profile by enabling the DTLS extension 'use_srtp'
-    /// - Sets the certificate and private key
+    /// - Sets the certificate and private key (for certificate identity)
+    /// - Sets the PSK server callback (for PSK identity)
     /// - Adds the certificates from the identity chain to the certificate chain.
     pub fn new(builder: &DtlsAcceptorBuilder) -> Result<DtlsAcceptor> {
         let mut acceptor = SslAcceptor::mozilla_intermediate(SslMethod::dtls())?;
@@ -38,15 +41,47 @@ impl DtlsAcceptor {
             acceptor.set_tlsext_use_srtp(&srtp_line)?;
         }
 
-        let identity = builder.identity.as_ref();
+        match &builder.identity {
+            AcceptorIdentity::Certificate(identity) => {
+                let identity = identity.as_ref();
 
-        acceptor.set_private_key(&identity.pkey)?;
-        acceptor.set_certificate(&identity.cert)?;
+                if let Some(ref pkey) = identity.pkey {
+                    acceptor.set_private_key(pkey)?;
+                }
+                if let Some(ref cert) = identity.cert {
+                    acceptor.set_certificate(cert)?;
+                }
 
-        if let Some(ref chain) = identity.chain {
-            for cert in chain.iter().rev() {
-                acceptor.add_extra_chain_cert(cert.to_owned())?;
+                if let Some(ref chain) = identity.ca {
+                    for cert in chain.iter().rev() {
+                        acceptor.add_extra_chain_cert(cert.to_owned())?;
+                    }
+                }
             }
+            AcceptorIdentity::Psk(psk_identity) => {
+                let psk_identity = psk_identity.clone();
+
+                acceptor.set_psk_server_callback(move |_, identity, mut psk| {
+                    // Verify client identity matches if provided
+                    if let Some(client_identity) = identity {
+                        if client_identity != psk_identity.0.as_ref() {
+                            debug!("psk_server_callback: client identity mismatch");
+                            return Err(ErrorStack::get());
+                        }
+                    }
+
+                    if let Err(err) = psk.write_all(&psk_identity.1) {
+                        debug!("psk_server_callback error (psk): {:?}", err);
+                        return Err(ErrorStack::get());
+                    }
+
+                    Ok(psk_identity.1.len())
+                });
+            }
+        }
+
+        if !builder.cipher_list.is_empty() {
+            acceptor.set_cipher_list(&builder.cipher_list.join(":"))?;
         }
 
         try_set_supported_protocols(builder.min_protocol, builder.max_protocol, &mut acceptor)?;
@@ -56,13 +91,15 @@ impl DtlsAcceptor {
 
     /// Returns a new builder for a `DtlsAcceptor`.
     ///
-    /// The identity acts as the server's private key/certificate chain.
-    pub fn builder(identity: CertificateIdentity) -> DtlsAcceptorBuilder {
+    /// The identity acts as the server's authentication credential
+    /// (certificate + private key, or PSK).
+    pub fn builder<I: Into<AcceptorIdentity>>(identity: I) -> DtlsAcceptorBuilder {
         DtlsAcceptorBuilder {
-            identity,
+            identity: identity.into(),
             srtp_profiles: vec![],
             min_protocol: Some(Protocol::Dtlsv10),
             max_protocol: None,
+            cipher_list: vec![],
         }
     }
 
