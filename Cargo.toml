@@ -13,6 +13,7 @@ readme = "README.md"
 
 [dependencies]
 openssl = "0.10.75"
+openssl-sys = "0.9.111"
 openssl-probe = "0.2.1"
 log = "0.4.29"
 bytes = "1.11.1"

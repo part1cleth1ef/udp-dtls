@@ -12,6 +12,7 @@ pub struct DtlsAcceptorBuilder {
     pub(crate) min_protocol: Option<Protocol>,
     pub(crate) max_protocol: Option<Protocol>,
     pub(crate) cipher_list: Vec<String>,
+    pub(crate) psk_identity_hint: Option<String>,
 }
 
 impl DtlsAcceptorBuilder {
@@ -60,6 +61,19 @@ impl DtlsAcceptorBuilder {
     /// This is required for PSK cipher suites (e.g. "PSK-AES128-CBC-SHA", "PSK-AES256-CBC-SHA").
     pub fn add_cipher<C: Into<String>>(&mut self, cipher: C) -> &mut DtlsAcceptorBuilder {
         self.cipher_list.push(cipher.into());
+        self
+    }
+
+    /// Sets the PSK identity hint to be sent to the client during the handshake.
+    ///
+    /// When set, OpenSSL will send a `ServerKeyExchange` message containing this hint,
+    /// which helps the client select the correct PSK.
+    ///
+    /// This corresponds to [`SSL_CTX_use_psk_identity_hint`].
+    ///
+    /// [`SSL_CTX_use_psk_identity_hint`]: https://www.openssl.org/docs/manmaster/man3/SSL_CTX_use_psk_identity_hint.html
+    pub fn psk_identity_hint<S: Into<String>>(&mut self, hint: S) -> &mut DtlsAcceptorBuilder {
+        self.psk_identity_hint = Some(hint.into());
         self
     }
 

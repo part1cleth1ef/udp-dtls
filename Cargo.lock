@@ -172,6 +172,7 @@ dependencies = [
  "log",
  "openssl",
  "openssl-probe",
+ "openssl-sys",
 ]
 
 [[package]]

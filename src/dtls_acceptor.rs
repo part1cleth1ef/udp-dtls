@@ -3,7 +3,15 @@ use crate::{DtlsAcceptorBuilder, DtlsStream, HandshakeError, AcceptorIdentity, P
 use log::debug;
 use openssl::error::ErrorStack;
 use openssl::ssl::{SslAcceptor, SslMethod};
+use std::ffi::CString;
 use std::{fmt, io, io::Write, result};
+
+unsafe extern "C" {
+    fn SSL_CTX_use_psk_identity_hint(
+        ctx: *mut openssl_sys::SSL_CTX,
+        identity_hint: *const std::os::raw::c_char,
+    ) -> std::os::raw::c_int;
+}
 
 /// Acceptor for incoming UDP sessions secured with DTLS.
 #[derive(Clone)]
@@ -77,6 +85,22 @@ impl DtlsAcceptor {
 
                     Ok(psk_identity.1.len())
                 });
+
+                if let Some(ref hint) = builder.psk_identity_hint {
+                    let c_hint = CString::new(hint.as_bytes()).map_err(|e| {
+                        debug!("psk_identity_hint contains interior null byte: {:?}", e);
+                        ErrorStack::get()
+                    })?;
+                    unsafe {
+                        let ret = SSL_CTX_use_psk_identity_hint(
+                            acceptor.as_ptr(),
+                            c_hint.as_ptr(),
+                        );
+                        if ret != 1 {
+                            return Err(ErrorStack::get().into());
+                        }
+                    }
+                }
             }
         }
 
@@ -100,6 +124,7 @@ impl DtlsAcceptor {
             min_protocol: Some(Protocol::Dtlsv10),
             max_protocol: None,
             cipher_list: vec![],
+            psk_identity_hint: None,
         }
     }
 
