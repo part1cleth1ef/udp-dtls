@@ -1,6 +1,6 @@
 [package]
 name = "udp-dtls"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Timon Post <https://github.com/TimonPost>", "Christopher _ <https://github.com/part1cleth1ef>"]
 edition = "2024"
 description = "DTLS abstraction ontop of UDP"
