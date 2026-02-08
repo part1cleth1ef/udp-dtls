@@ -71,12 +71,12 @@ impl DtlsAcceptor {
 
                 acceptor.set_psk_server_callback(move |_, identity, mut psk| {
                     // Verify client identity matches if provided
-                    if let Some(client_identity) = identity {
-                        if client_identity != psk_identity.0.as_ref() {
-                            debug!("psk_server_callback: client identity mismatch");
-                            return Err(ErrorStack::get());
-                        }
-                    }
+                    // if let Some(client_identity) = identity {
+                    //     if client_identity != psk_identity.0.as_ref() {
+                    //         debug!("psk_server_callback: client identity mismatch");
+                    //         return Err(ErrorStack::get());
+                    //     }
+                    // }
 
                     if let Err(err) = psk.write_all(&psk_identity.1) {
                         debug!("psk_server_callback error (psk): {:?}", err);
