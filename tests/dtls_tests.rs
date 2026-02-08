@@ -206,3 +206,44 @@ fn test_acceptor_identity_from_psk_identity() {
     let _builder = DtlsAcceptor::builder(psk)
         .add_cipher("PSK-AES128-CBC-SHA");
 }
+
+#[test]
+fn test_psk_dtls_connection_with_identity_hint() {
+    // Test that PSK identity hint causes a ServerKeyExchange to be sent.
+    let psk_identity = b"test-client";
+    let psk_key = b"0123456789abcdef"; // 16 bytes for AES-128
+
+    let server_psk = PskIdentity::new(psk_identity, psk_key);
+    let client_psk = PskIdentity::new(psk_identity, psk_key);
+
+    let acceptor = DtlsAcceptor::builder(server_psk)
+        .add_cipher("PSK-AES128-CBC-SHA")
+        .psk_identity_hint("my-server-hint")
+        .build()
+        .unwrap();
+
+    let connector = DtlsConnector::builder()
+        .identity(ConnectorIdentity::Psk(client_psk))
+        .add_cipher("PSK-AES128-CBC-SHA")
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    let (server_channel, client_channel) = create_udp_pair();
+
+    let server_thread = thread::spawn(move || {
+        let mut dtls_server = acceptor.accept(server_channel).unwrap();
+        let mut received = [0; 5];
+        dtls_server.read_exact(&mut received).unwrap();
+        assert_eq!(&received, b"hello");
+        dtls_server.write_all(b"world").unwrap();
+    });
+
+    let mut dtls_client = connector.connect("localhost", client_channel).unwrap();
+    dtls_client.write_all(b"hello").unwrap();
+    let mut received = [0; 5];
+    dtls_client.read_exact(&mut received).unwrap();
+    assert_eq!(&received, b"world");
+
+    server_thread.join().unwrap();
+}
