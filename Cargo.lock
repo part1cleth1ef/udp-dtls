@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "udp-dtls"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "bytes",
  "log",
